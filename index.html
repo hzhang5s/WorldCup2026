@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>World Cup 26 — Live Hub</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Archivo:wght@400;500;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header>
+  <div class="header-row">
+    <div class="header-left">
+      <div class="wordmark">World Cup <span>26</span></div>
+      <div class="subtitle">United States · Canada · Mexico</div>
+    </div>
+    <div class="controls">
+      <button class="btn" id="refreshBtn" onclick="loadData()">Refresh</button>
+      <label class="toggle"><input type="checkbox" id="autoToggle" onchange="toggleAuto()"> Auto (60s)</label>
+      <div>
+        <div class="updated" id="lastUpdated">Loading…</div>
+        <div class="status-msg" id="statusMsg"></div>
+      </div>
+    </div>
+  </div>
+  <nav role="tablist">
+    <button class="tab active" data-panel="liveTab" onclick="showTab(this)">Live</button>
+    <button class="tab" data-panel="matchesTab" onclick="showTab(this)">Matches</button>
+    <button class="tab" data-panel="groupsTab" onclick="showTab(this)">Groups</button>
+    <button class="tab" data-panel="bootTab" onclick="showTab(this)">Golden Boot</button>
+  </nav>
+</header>
+
+<main>
+  <div class="panel active" id="liveTab">
+    <div id="boardSection"></div>
+    <div class="section-label">Latest results</div>
+    <div class="round-block" id="latestList"></div>
+    <div class="section-label">Coming up</div>
+    <div class="round-block" id="nextList"></div>
+  </div>
+
+  <div class="panel" id="matchesTab"><div id="allMatches"></div></div>
+
+  <div class="panel" id="groupsTab">
+    <div class="groups-grid" id="groupsGrid"></div>
+  </div>
+
+  <div class="panel" id="bootTab">
+    <div id="bootList"></div>
+    <p class="legend" id="bootLegend">Tiebreakers: most assists, then fewest minutes played.</p>
+  </div>
+</main>
+
+
+
+<script src="script.js"></script>
+</body>
+</html>
