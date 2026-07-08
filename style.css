@@ -302,6 +302,53 @@ main {
   opacity: 0.85;
   letter-spacing: 0.04em;
 }
+.countdown {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(10px, 2.5vw, 22px);
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(243, 245, 241, 0.15);
+  flex-wrap: wrap;
+}
+.cd-label {
+  font-family: var(--display);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+.cd-unit {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 52px;
+}
+.cd-n {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: clamp(30px, 5vw, 44px);
+  line-height: 1;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.cd-l {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-top: 4px;
+}
+.cd-soon {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
 .minute {
   color: var(--gold);
   font-weight: 600;
