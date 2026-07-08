@@ -16,6 +16,9 @@ const STANDINGS_URL =
   "https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings?season=2026";
 const SCORERS_URL =
   "https://api.football-data.org/v4/competitions/WC/scorers?limit=10";
+/* Optional: paste your free key from football-data.org here for live scorers.
+   Leave empty ("") to use the built-in snapshot instead. */
+const FOOTBALL_DATA_KEY = "";
 
 /* ============ team metadata ============ */
 const NAMES = {
@@ -387,7 +390,7 @@ async function loadData() {
       loadFallback();
     }
     msg.textContent =
-      "API unreachable here — showing Jul 7 snapshot. Open the file in a regular browser for live data.";
+      "Couldn't reach the ESPN API — showing Jul 7 snapshot. Hit Refresh to retry.";
   } finally {
     btn.disabled = false;
     loadScorers();
@@ -514,7 +517,49 @@ function renderBoard() {
         <div class="flagwrap">${flagImg(n.away, n.awayMeta, 160, "flag flag-lg")}</div></div>
     </div>
     <div class="board-meta">${esc(n.when)} · ${esc(n.kick)}${n.venue ? ` · ${esc(n.venue)}` : ""}${n.city ? `, ${esc(n.city)}` : ""}</div>
+    ${
+      n.date && n.date.getFullYear() < 2090
+        ? `<div class="countdown" id="countdown" data-kick="${n.date.getTime()}"></div>`
+        : ""
+    }
   </div></div>`;
+}
+
+/* ============ kickoff countdown ============ */
+let countdownTimer = null;
+function startCountdown() {
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+  const el = document.getElementById("countdown");
+  if (!el) return;
+  const kick = Number(el.dataset.kick);
+  const pad = (n) => String(n).padStart(2, "0");
+  const unit = (n, lbl) =>
+    `<div class="cd-unit"><span class="cd-n">${pad(n)}</span><span class="cd-l">${lbl}</span></div>`;
+  function tick() {
+    const diff = kick - Date.now();
+    if (diff <= 0) {
+      el.innerHTML = `<span class="cd-soon">Kickoff! Updating scores…</span>`;
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+      setTimeout(loadData, 20000); // give the API a moment, then refresh
+      return;
+    }
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    el.innerHTML =
+      `<span class="cd-label">Kickoff in</span>` +
+      (d > 0 ? unit(d, d === 1 ? "Day" : "Days") : "") +
+      unit(h, "Hrs") +
+      unit(m, "Min") +
+      unit(s, "Sec");
+  }
+  tick();
+  countdownTimer = setInterval(tick, 1000);
 }
 
 function matchRowHTML(m) {
@@ -541,7 +586,8 @@ function matchRowHTML(m) {
       <span class="tname">${esc(name(m.awayMeta, m.away))}</span>${flagImg(m.away, m.awayMeta, 80, "flag")}
     </div>
     <div class="meta">
-      ${m.venue ? `${esc(m.venue)}${m.city ? ` · ${esc(m.city)}` : ""}<br>` : ""}
+      ${m.venue ? `${esc(m.venue)}<br>` : ""}
+      ${m.city ? `${esc(m.city)}<br>` : ""}
       ${esc(m.when)}${!done ? ` · ${esc(m.kick)}` : ""} ${chip}
       ${m.note ? `<br><span class="note">${esc(m.note)}</span>` : ""}
     </div>
@@ -625,6 +671,7 @@ function renderBoot() {
 
 function renderAll() {
   renderBoard();
+  startCountdown();
   renderLiveLists();
   renderMatches();
   renderGroups();
