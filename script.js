@@ -461,8 +461,10 @@ async function loadBoot() {
         const gm = /G:\s*(\d+):\s*A:\s*(\d+)/.exec(l.shortDisplayValue || "");
         const goals = gm ? Number(gm[1]) : Math.round(l.value || 0);
         const assists = gm ? Number(gm[2]) : 0;
-        const athleteUrl = l.athlete && l.athlete.$ref;
-        const teamUrl = l.team && l.team.$ref;
+        /* ESPN's $ref links come back as http:// even on https pages, which
+           browsers block as mixed content — force https before fetching. */
+        const athleteUrl = l.athlete && l.athlete.$ref && l.athlete.$ref.replace(/^http:/, "https:");
+        const teamUrl = l.team && l.team.$ref && l.team.$ref.replace(/^http:/, "https:");
         if (teamUrl && !teamCache[teamUrl]) {
           teamCache[teamUrl] = fetch(teamUrl)
             .then((r) => r.json())
