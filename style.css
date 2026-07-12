@@ -587,7 +587,12 @@ main {
   height: 4px;
   flex: none;
 }
-.boot-goals {
+.boot-stats {
+  display: flex;
+  gap: 22px;
+}
+.boot-goals,
+.boot-assists {
   text-align: right;
 }
 .boot-goals .n {
@@ -596,7 +601,15 @@ main {
   font-size: 32px;
   font-variant-numeric: tabular-nums;
 }
-.boot-goals .lbl {
+.boot-assists .n {
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 32px;
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+.boot-goals .lbl,
+.boot-assists .lbl {
   font-size: 10px;
   letter-spacing: 0.12em;
   text-transform: uppercase;

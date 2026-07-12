@@ -14,11 +14,8 @@ const SCOREBOARD_URL =
   "https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260719&limit=200";
 const STANDINGS_URL =
   "https://site.api.espn.com/apis/v2/sports/soccer/fifa.world/standings?season=2026";
-const SCORERS_URL =
-  "https://api.football-data.org/v4/competitions/WC/scorers?limit=10";
-/* Optional: paste your free key from football-data.org here for live scorers.
-   Leave empty ("") to use the built-in snapshot instead. */
-const FOOTBALL_DATA_KEY = "";
+const LEADERS_URL =
+  "https://sports.core.api.espn.com/v2/sports/soccer/leagues/fifa.world/seasons/2026/types/1/leaders?lang=en&region=us";
 
 /* ============ team metadata ============ */
 const NAMES = {
@@ -393,7 +390,7 @@ async function loadData() {
       "Couldn't reach the ESPN API — showing Jul 7 snapshot. Hit Refresh to retry.";
   } finally {
     btn.disabled = false;
-    loadScorers();
+    loadBoot().then(renderBoot);
     renderAll();
   }
 }
@@ -405,6 +402,7 @@ let BOOT = [
     player: "Lionel Messi",
     team: "ARG",
     goals: 8,
+    assists: 3,
     note: "Scored in the R16 comeback vs Egypt",
   },
   {
@@ -412,23 +410,26 @@ let BOOT = [
     player: "Kylian Mbappé",
     team: "FRA",
     goals: 7,
-    note: "2 assists — first tiebreaker",
+    assists: 2,
+    note: "",
   },
   {
     rank: 3,
     player: "Erling Haaland",
     team: "NOR",
     goals: 7,
+    assists: 1,
     note: "Brace to knock out Brazil",
   },
-  { rank: 4, player: "Harry Kane", team: "ENG", goals: 6, note: "" },
-  { rank: 5, player: "Ousmane Dembélé", team: "FRA", goals: 4, note: "" },
-  { rank: 5, player: "Mikel Oyarzabal", team: "ESP", goals: 4, note: "" },
+  { rank: 4, player: "Harry Kane", team: "ENG", goals: 6, assists: 1, note: "" },
+  { rank: 5, player: "Ousmane Dembélé", team: "FRA", goals: 4, assists: 2, note: "" },
+  { rank: 5, player: "Mikel Oyarzabal", team: "ESP", goals: 4, assists: 1, note: "" },
   {
     rank: 5,
     player: "Vinícius Júnior",
     team: "BRA",
     goals: 4,
+    assists: 0,
     note: "Eliminated",
   },
   {
@@ -436,30 +437,76 @@ let BOOT = [
     player: "Ismaïla Sarr",
     team: "SEN",
     goals: 4,
+    assists: 1,
     note: "Eliminated",
   },
 ];
-async function loadScorers() {
-  if (!FOOTBALL_DATA_KEY) return; // no key: keep snapshot
+
+/* Live Golden Boot: ESPN's tournament leaders endpoint gives goals+assists
+   per player as $ref pointers, so each row needs a follow-up fetch for the
+   athlete's name and the team's abbreviation (team refs are cached/deduped
+   since several leaders share a team). */
+async function loadBoot() {
   try {
-    const res = await fetch(SCORERS_URL, {
-      headers: { "X-Auth-Token": FOOTBALL_DATA_KEY },
-    });
-    if (!res.ok) throw new Error("scorers HTTP " + res.status);
+    const res = await fetch(LEADERS_URL);
+    if (!res.ok) throw new Error("leaders HTTP " + res.status);
     const data = await res.json();
-    if (Array.isArray(data.scorers) && data.scorers.length) {
-      BOOT = data.scorers.map((s, i) => ({
-        rank: i + 1,
-        player: s.player.name,
-        team: norm(s.team && s.team.tla),
-        goals: s.goals || 0,
-        note: s.assists ? `${s.assists} assists` : "",
-      }));
-      document.getElementById("bootLegend").textContent =
-        "Live via football-data.org. Tiebreakers: most assists, then fewest minutes played.";
-    }
+    const cat = (data.categories || []).find((c) => c.name === "goalsLeaders");
+    const leaders = ((cat && cat.leaders) || []).slice(0, 10);
+    if (!leaders.length) throw new Error("no goalsLeaders");
+
+    const teamCache = {};
+    const rows = await Promise.all(
+      leaders.map(async (l) => {
+        const gm = /G:\s*(\d+):\s*A:\s*(\d+)/.exec(l.shortDisplayValue || "");
+        const goals = gm ? Number(gm[1]) : Math.round(l.value || 0);
+        const assists = gm ? Number(gm[2]) : 0;
+        const athleteUrl = l.athlete && l.athlete.$ref;
+        const teamUrl = l.team && l.team.$ref;
+        if (teamUrl && !teamCache[teamUrl]) {
+          teamCache[teamUrl] = fetch(teamUrl)
+            .then((r) => r.json())
+            .catch(() => null);
+        }
+        const [athlete, team] = await Promise.all([
+          athleteUrl
+            ? fetch(athleteUrl)
+                .then((r) => r.json())
+                .catch(() => null)
+            : null,
+          teamUrl ? teamCache[teamUrl] : null,
+        ]);
+        return {
+          player: (athlete && athlete.displayName) || "Unknown",
+          team: norm(team && team.abbreviation),
+          goals,
+          assists,
+          note: "",
+        };
+      }),
+    );
+
+    rows.sort((a, b) => b.goals - a.goals || b.assists - a.assists);
+    let rank = 0,
+      lastGoals = null;
+    BOOT = rows.map((r, i) => {
+      if (r.goals !== lastGoals) {
+        rank = i + 1;
+        lastGoals = r.goals;
+      }
+      return { rank, ...r };
+    });
+    document.getElementById("bootLegend").textContent =
+      "Live via ESPN · updated " +
+      new Date().toLocaleTimeString("en-US", {
+        hour: "numeric",
+        minute: "2-digit",
+      }) +
+      ". Tiebreaker: most assists.";
   } catch (err) {
-    console.error("Scorers load failed:", err);
+    console.error("Golden Boot load failed:", err);
+    document.getElementById("bootLegend").textContent =
+      "Couldn't reach live stats — showing snapshot. Tiebreakers: most assists, then fewest minutes played.";
   }
 }
 
@@ -664,7 +711,10 @@ function renderBoot() {
       <span class="boot-name">${esc(b.player)}</span>
       <span class="boot-team">${flagImg(b.team, null, 80, "flag flag-sm")}${esc(NAMES[b.team] || b.team)}${b.note ? ` · <span class="boot-note">${esc(b.note)}</span>` : ""}</span>
     </div>
-    <div class="boot-goals"><div class="n">${b.goals}</div><div class="lbl">Goals</div></div>
+    <div class="boot-stats">
+      <div class="boot-goals"><div class="n">${b.goals}</div><div class="lbl">Goals</div></div>
+      <div class="boot-assists"><div class="n">${b.assists || 0}</div><div class="lbl">Assists</div></div>
+    </div>
   </div>`,
   ).join("");
 }
